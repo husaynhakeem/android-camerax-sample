@@ -6,5 +6,14 @@
 
     <fragment android:id="@+id/permissionFragment"
               android:name="com.husaynhakeem.camerax_sample.ui.PermissionFragment"
-              android:label="PermissionFragment"/>
+              android:label="PermissionFragment">
+        <action
+                android:id="@+id/action_permissionFragment_to_cameraFragment"
+                app:destination="@id/cameraFragment"/>
+    </fragment>
+
+    <fragment
+            android:id="@+id/cameraFragment"
+            android:name="com.husaynhakeem.camerax_sample.ui.CameraFragment"
+            android:label="CameraFragment"/>
 </navigation>
