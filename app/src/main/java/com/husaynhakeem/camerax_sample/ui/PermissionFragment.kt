@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.NavOptions
 import androidx.navigation.Navigation
 import com.google.android.material.snackbar.Snackbar
 import com.husaynhakeem.camerax_sample.R
@@ -52,8 +53,9 @@ class PermissionFragment : Fragment() {
     }
 
     private fun displayCameraFragment() {
+        val navOptions = NavOptions.Builder().setPopUpTo(R.id.permissionFragment, true).build()
         Navigation.findNavController(requireActivity(), R.id.mainContent)
-            .navigate(R.id.action_permissionFragment_to_cameraFragment)
+            .navigate(R.id.cameraFragment, null, navOptions)
     }
 
     private fun displayErrorMessage() {
