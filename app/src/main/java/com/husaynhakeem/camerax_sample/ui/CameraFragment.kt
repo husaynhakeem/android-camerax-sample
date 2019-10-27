@@ -2,16 +2,17 @@ package com.husaynhakeem.camerax_sample.ui
 
 import android.graphics.Matrix
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.util.Log
-import android.util.Size
 import android.view.LayoutInflater
 import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.camera.core.*
+import androidx.camera.core.CameraX
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCapture.OnImageSavedListener
+import androidx.camera.core.Preview
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import com.husaynhakeem.camerax_sample.R
@@ -21,13 +22,6 @@ import java.util.concurrent.Executors
 
 
 class CameraFragment : Fragment() {
-
-    private lateinit var config: CameraConfiguration
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        retainInstance = true
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -48,12 +42,6 @@ class CameraFragment : Fragment() {
     }
 
     private fun setupCamera() {
-        val metrics = DisplayMetrics().also { cameraTextureView.display.getRealMetrics(it) }
-        config = CameraConfiguration(
-            rotation = cameraTextureView.display.rotation,
-            resolution = Size(metrics.widthPixels, metrics.heightPixels)
-        )
-
         CameraX.unbindAll()
         CameraX.bindToLifecycle(
             this,
@@ -64,13 +52,7 @@ class CameraFragment : Fragment() {
     }
 
     private fun buildPreviewUseCase(): Preview {
-        val previewConfig = PreviewConfig.Builder()
-            .setTargetRotation(config.rotation)
-            .setTargetResolution(config.resolution)
-            .setLensFacing(config.lensFacing)
-            .build()
-        val preview = Preview(previewConfig)
-
+        val preview = Preview(UsecaseConfigBuilder.buildPreviewConfig(root.display))
         preview.setOnPreviewOutputUpdateListener { previewOutput ->
             val parent = cameraTextureView.parent as ViewGroup
             parent.removeView(cameraTextureView)
@@ -101,20 +83,11 @@ class CameraFragment : Fragment() {
     }
 
     private fun buildImageCaptureUseCase(): ImageCapture {
-        val captureConfig = ImageCaptureConfig.Builder()
-            .setTargetRotation(config.rotation)
-            .setTargetResolution(config.resolution)
-            .setFlashMode(config.flashMode)
-            .setCaptureMode(config.captureMode)
-            .build()
-        val capture = ImageCapture(captureConfig)
-
+        val capture = ImageCapture(UsecaseConfigBuilder.buildImageCaptureConfig(root.display))
         cameraCaptureImageButton.setOnClickListener {
             val fileName = System.currentTimeMillis().toString()
             val fileFormat = ".jpg"
             val imageFile = createTempFile(fileName, fileFormat)
-
-
             capture.takePicture(
                 imageFile,
                 Executors.newSingleThreadExecutor(),
@@ -136,19 +109,11 @@ class CameraFragment : Fragment() {
                     }
                 })
         }
-
         return capture
     }
 
     private fun buildImageAnalysisUseCase(): ImageAnalysis {
-        val analysisConfig = ImageAnalysisConfig.Builder()
-            .setTargetRotation(config.rotation)
-            .setTargetResolution(config.resolution)
-            .setImageReaderMode(config.readerMode)
-            .setImageQueueDepth(config.queueDepth)
-            .build()
-        val analysis = ImageAnalysis(analysisConfig)
-
+        val analysis = ImageAnalysis(UsecaseConfigBuilder.buildImageAnalysisConfig(root.display))
         analysis.setAnalyzer(
             Executors.newSingleThreadExecutor(),
             ImageAnalysis.Analyzer { image, rotationDegrees ->
@@ -157,7 +122,6 @@ class CameraFragment : Fragment() {
                     "Image analysis: $image - Rotation degrees: $rotationDegrees"
                 )
             })
-
         return analysis
     }
 }
