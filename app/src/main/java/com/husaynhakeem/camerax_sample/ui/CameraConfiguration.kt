@@ -9,7 +9,6 @@ import androidx.camera.core.ImageCapture
 
 
 data class CameraConfiguration(
-    val aspectRatio: Rational,
     val rotation: Int = 0,
     val resolution: Size,
 

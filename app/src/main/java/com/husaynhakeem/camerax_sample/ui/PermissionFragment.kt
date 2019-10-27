@@ -19,7 +19,11 @@ class PermissionFragment : Fragment() {
 
     private val rootView by lazy { FrameLayout(requireContext()) }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         return rootView
     }
 
@@ -32,19 +36,24 @@ class PermissionFragment : Fragment() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_REQUEST_CODE) {
-            if (grantResults.contains(PackageManager.PERMISSION_GRANTED)) {
-                displayCameraFragment()
-            } else {
-                displayErrorMessage()
+            when {
+                grantResults.contains(PackageManager.PERMISSION_GRANTED) -> displayCameraFragment()
+                shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> requestCameraPermission()
+                else -> displayErrorMessage()
             }
         }
     }
 
     private fun isCameraPermissionGranted(): Boolean {
-        val permission = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+        val permission =
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
         return permission == PackageManager.PERMISSION_GRANTED
     }
 

@@ -10,6 +10,12 @@ android {
         targetSdkVersion 28
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+    android {
+        compileOptions {
+            sourceCompatibility JavaVersion.VERSION_1_8
+            targetCompatibility JavaVersion.VERSION_1_8
+        }
+    }
 }
 
 dependencies {
@@ -21,6 +27,6 @@ dependencies {
     implementation "android.arch.navigation:navigation-ui:$navigationVersion"
     implementation "androidx.camera:camera-core:$cameraXVersion"
     implementation "androidx.camera:camera-camera2:$cameraXVersion"
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation "androidx.test:runner:1.1.1"
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test:runner:$testRunnerVersion"
 }

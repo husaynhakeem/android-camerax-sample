@@ -4,7 +4,6 @@ import android.graphics.Matrix
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
-import android.util.Rational
 import android.util.Size
 import android.view.LayoutInflater
 import android.view.Surface
@@ -12,11 +11,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.camera.core.*
+import androidx.camera.core.ImageCapture.OnImageSavedListener
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import com.husaynhakeem.camerax_sample.R
 import kotlinx.android.synthetic.main.fragment_camera.*
 import java.io.File
+import java.util.concurrent.Executors
 
 
 class CameraFragment : Fragment() {
@@ -28,7 +29,11 @@ class CameraFragment : Fragment() {
         retainInstance = true
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         return inflater.inflate(R.layout.fragment_camera, container, false)
     }
 
@@ -45,7 +50,6 @@ class CameraFragment : Fragment() {
     private fun setupCamera() {
         val metrics = DisplayMetrics().also { cameraTextureView.display.getRealMetrics(it) }
         config = CameraConfiguration(
-            aspectRatio = Rational(metrics.widthPixels, metrics.heightPixels),
             rotation = cameraTextureView.display.rotation,
             resolution = Size(metrics.widthPixels, metrics.heightPixels)
         )
@@ -61,7 +65,6 @@ class CameraFragment : Fragment() {
 
     private fun buildPreviewUseCase(): Preview {
         val previewConfig = PreviewConfig.Builder()
-            .setTargetAspectRatio(config.aspectRatio)
             .setTargetRotation(config.rotation)
             .setTargetResolution(config.resolution)
             .setLensFacing(config.lensFacing)
@@ -99,7 +102,6 @@ class CameraFragment : Fragment() {
 
     private fun buildImageCaptureUseCase(): ImageCapture {
         val captureConfig = ImageCaptureConfig.Builder()
-            .setTargetAspectRatio(config.aspectRatio)
             .setTargetRotation(config.rotation)
             .setTargetResolution(config.resolution)
             .setFlashMode(config.flashMode)
@@ -111,18 +113,28 @@ class CameraFragment : Fragment() {
             val fileName = System.currentTimeMillis().toString()
             val fileFormat = ".jpg"
             val imageFile = createTempFile(fileName, fileFormat)
-            capture.takePicture(imageFile, object : ImageCapture.OnImageSavedListener {
-                override fun onImageSaved(file: File) {
-                    val arguments = ImagePreviewFragment.arguments(file.absolutePath)
-                    Navigation.findNavController(requireActivity(), R.id.mainContent)
-                        .navigate(R.id.imagePreviewFragment, arguments)
-                }
 
-                override fun onError(useCaseError: ImageCapture.UseCaseError, message: String, cause: Throwable?) {
-                    Toast.makeText(requireContext(), "Error: $message", Toast.LENGTH_LONG).show()
-                    Log.e("CameraFragment", "Capture error $useCaseError: $message", cause)
-                }
-            })
+
+            capture.takePicture(
+                imageFile,
+                Executors.newSingleThreadExecutor(),
+                object : OnImageSavedListener {
+                    override fun onImageSaved(file: File) {
+                        val arguments = ImagePreviewFragment.arguments(file.absolutePath)
+                        Navigation.findNavController(requireActivity(), R.id.mainContent)
+                            .navigate(R.id.imagePreviewFragment, arguments)
+                    }
+
+                    override fun onError(
+                        imageCaptureError: ImageCapture.ImageCaptureError,
+                        message: String,
+                        cause: Throwable?
+                    ) {
+                        Toast.makeText(requireContext(), "Error: $message", Toast.LENGTH_LONG)
+                            .show()
+                        Log.e("CameraFragment", "Capture error $imageCaptureError: $message", cause)
+                    }
+                })
         }
 
         return capture
@@ -130,7 +142,6 @@ class CameraFragment : Fragment() {
 
     private fun buildImageAnalysisUseCase(): ImageAnalysis {
         val analysisConfig = ImageAnalysisConfig.Builder()
-            .setTargetAspectRatio(config.aspectRatio)
             .setTargetRotation(config.rotation)
             .setTargetResolution(config.resolution)
             .setImageReaderMode(config.readerMode)
@@ -138,9 +149,14 @@ class CameraFragment : Fragment() {
             .build()
         val analysis = ImageAnalysis(analysisConfig)
 
-        analysis.setAnalyzer { image, rotationDegrees ->
-            Log.d("CameraFragment", "Image analysis: $image - Rotation degrees: $rotationDegrees")
-        }
+        analysis.setAnalyzer(
+            Executors.newSingleThreadExecutor(),
+            ImageAnalysis.Analyzer { image, rotationDegrees ->
+                Log.d(
+                    "CameraFragment",
+                    "Image analysis: $image - Rotation degrees: $rotationDegrees"
+                )
+            })
 
         return analysis
     }
