@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import com.husaynhakeem.camerax_sample.R
 import com.husaynhakeem.camerax_sample.ui.gallery.GalleryFragment
+import com.husaynhakeem.camerax_sample.ui.preview.FileCreator.JPEG_FORMAT
 import kotlinx.android.synthetic.main.fragment_camera.*
 import java.io.File
 import java.util.concurrent.Executors
@@ -94,11 +95,8 @@ class CameraFragment : Fragment() {
             )
         )
         cameraCaptureImageButton.setOnClickListener {
-            val fileName = System.currentTimeMillis().toString()
-            val fileFormat = ".jpg"
-            val imageFile = createTempFile(fileName, fileFormat)
             capture.takePicture(
-                imageFile,
+                FileCreator.createTempFile(JPEG_FORMAT),
                 Executors.newSingleThreadExecutor(),
                 object : OnImageSavedListener {
                     override fun onImageSaved(file: File) {
