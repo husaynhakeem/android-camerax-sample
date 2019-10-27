@@ -7,16 +7,16 @@
 
     <fragment
             android:id="@+id/permissionFragment"
-            android:name="com.husaynhakeem.camerax_sample.ui.PermissionFragment"
+            android:name="com.husaynhakeem.camerax_sample.ui.permission.PermissionFragment"
             android:label="PermissionFragment"/>
 
     <fragment
             android:id="@+id/cameraFragment"
-            android:name="com.husaynhakeem.camerax_sample.ui.CameraFragment"
+            android:name="com.husaynhakeem.camerax_sample.ui.preview.CameraFragment"
             android:label="CameraFragment"/>
 
     <fragment
             android:id="@+id/imagePreviewFragment"
-            android:name="com.husaynhakeem.camerax_sample.ui.ImagePreviewFragment"
+            android:name="com.husaynhakeem.camerax_sample.ui.gallery.GalleryFragment"
             android:label="ImagePreviewFragment"/>
 </navigation>

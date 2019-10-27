@@ -1,4 +1,4 @@
-package com.husaynhakeem.camerax_sample.ui
+package com.husaynhakeem.camerax_sample.ui.permission
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -58,7 +58,9 @@ class PermissionFragment : Fragment() {
     }
 
     private fun requestCameraPermission() {
-        requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_REQUEST_CODE)
+        requestPermissions(arrayOf(Manifest.permission.CAMERA),
+            CAMERA_REQUEST_CODE
+        )
     }
 
     private fun displayCameraFragment() {

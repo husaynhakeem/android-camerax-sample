@@ -1,4 +1,4 @@
-package com.husaynhakeem.camerax_sample.ui
+package com.husaynhakeem.camerax_sample.ui.preview
 
 import android.util.DisplayMetrics
 import android.util.Size

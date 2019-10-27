@@ -1,4 +1,4 @@
-package com.husaynhakeem.camerax_sample.ui
+package com.husaynhakeem.camerax_sample.ui.preview
 
 import android.graphics.Matrix
 import android.os.Bundle
@@ -16,6 +16,7 @@ import androidx.camera.core.Preview
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
 import com.husaynhakeem.camerax_sample.R
+import com.husaynhakeem.camerax_sample.ui.gallery.GalleryFragment
 import kotlinx.android.synthetic.main.fragment_camera.*
 import java.io.File
 import java.util.concurrent.Executors
@@ -52,7 +53,11 @@ class CameraFragment : Fragment() {
     }
 
     private fun buildPreviewUseCase(): Preview {
-        val preview = Preview(UsecaseConfigBuilder.buildPreviewConfig(root.display))
+        val preview = Preview(
+            UsecaseConfigBuilder.buildPreviewConfig(
+                root.display
+            )
+        )
         preview.setOnPreviewOutputUpdateListener { previewOutput ->
             val parent = cameraTextureView.parent as ViewGroup
             parent.removeView(cameraTextureView)
@@ -83,7 +88,11 @@ class CameraFragment : Fragment() {
     }
 
     private fun buildImageCaptureUseCase(): ImageCapture {
-        val capture = ImageCapture(UsecaseConfigBuilder.buildImageCaptureConfig(root.display))
+        val capture = ImageCapture(
+            UsecaseConfigBuilder.buildImageCaptureConfig(
+                root.display
+            )
+        )
         cameraCaptureImageButton.setOnClickListener {
             val fileName = System.currentTimeMillis().toString()
             val fileFormat = ".jpg"
@@ -93,7 +102,10 @@ class CameraFragment : Fragment() {
                 Executors.newSingleThreadExecutor(),
                 object : OnImageSavedListener {
                     override fun onImageSaved(file: File) {
-                        val arguments = ImagePreviewFragment.arguments(file.absolutePath)
+                        val arguments =
+                            GalleryFragment.arguments(
+                                file.absolutePath
+                            )
                         Navigation.findNavController(requireActivity(), R.id.mainContent)
                             .navigate(R.id.imagePreviewFragment, arguments)
                     }
@@ -113,7 +125,11 @@ class CameraFragment : Fragment() {
     }
 
     private fun buildImageAnalysisUseCase(): ImageAnalysis {
-        val analysis = ImageAnalysis(UsecaseConfigBuilder.buildImageAnalysisConfig(root.display))
+        val analysis = ImageAnalysis(
+            UsecaseConfigBuilder.buildImageAnalysisConfig(
+                root.display
+            )
+        )
         analysis.setAnalyzer(
             Executors.newSingleThreadExecutor(),
             ImageAnalysis.Analyzer { image, rotationDegrees ->
