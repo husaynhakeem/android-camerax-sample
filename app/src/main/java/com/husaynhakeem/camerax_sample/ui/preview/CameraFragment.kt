@@ -1,21 +1,18 @@
 package com.husaynhakeem.camerax_sample.ui.preview
 
-import android.graphics.Matrix
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Size
-import android.view.LayoutInflater
-import android.view.Surface
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.Toast
-import androidx.camera.core.CameraX
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCapture.OnImageSavedListener
-import androidx.camera.core.Preview
+import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.TextureViewMeteringPointFactory
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.Navigation
+import com.google.common.util.concurrent.ListenableFuture
 import com.husaynhakeem.camerax_sample.R
 import com.husaynhakeem.camerax_sample.ui.gallery.GalleryFragment
 import com.husaynhakeem.camerax_sample.ui.preview.FileCreator.JPEG_FORMAT
@@ -26,149 +23,121 @@ import java.util.concurrent.Executors
 
 class CameraFragment : Fragment() {
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    private lateinit var processCameraProviderFuture: ListenableFuture<ProcessCameraProvider>
+    private lateinit var processCameraProvider: ProcessCameraProvider
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        processCameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_camera, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewFinder.post { setupCamera() }
+        processCameraProviderFuture.addListener(Runnable {
+            processCameraProvider = processCameraProviderFuture.get()
+            viewFinder.post { setupCamera() }
+        }, ContextCompat.getMainExecutor(requireContext()))
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        CameraX.unbindAll()
+        if (::processCameraProvider.isInitialized) {
+            processCameraProvider.unbindAll()
+        }
     }
 
     private fun setupCamera() {
-        CameraX.unbindAll()
-        CameraX.bindToLifecycle(
-            this,
-            buildPreviewUseCase(),
-            buildImageCaptureUseCase(),
-            buildImageAnalysisUseCase()
-        )
+        processCameraProvider.unbindAll()
+        val camera = processCameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                buildPreviewUseCase(),
+                buildImageCaptureUseCase(),
+                buildImageAnalysisUseCase())
+        setupTapForFocus(camera.cameraControl)
     }
 
     private fun buildPreviewUseCase(): Preview {
-        val preview = Preview(
-            UsecaseConfigBuilder.buildPreviewConfig(
-                viewFinder.display
-            )
-        )
-        preview.setOnPreviewOutputUpdateListener { previewOutput ->
-            updateViewFinderWithPreview(previewOutput)
-            correctPreviewOutputForDisplay(previewOutput.textureSize)
-        }
+        val display = viewFinder.display
+        val metrics = DisplayMetrics().also { display.getMetrics(it) }
+        val preview = Preview.Builder()
+                .setTargetRotation(display.rotation)
+                .setTargetResolution(Size(metrics.widthPixels, metrics.heightPixels))
+                .build()
+                .apply {
+                    previewSurfaceProvider = viewFinder.previewSurfaceProvider
+                }
+        preview.previewSurfaceProvider = viewFinder.previewSurfaceProvider
         return preview
     }
 
-    private fun updateViewFinderWithPreview(previewOutput: Preview.PreviewOutput) {
-        val parent = viewFinder.parent as ViewGroup
-        parent.removeView(viewFinder)
-        parent.addView(viewFinder, 0)
-        viewFinder.surfaceTexture = previewOutput.surfaceTexture
-    }
-
-    /**
-     * Corrects the camera/preview's output to the display, by scaling
-     * up/down and/or rotating the camera/preview's output.
-     */
-    private fun correctPreviewOutputForDisplay(textureSize: Size) {
-        val matrix = Matrix()
-
-        val centerX = viewFinder.width / 2f
-        val centerY = viewFinder.height / 2f
-
-        val displayRotation = getDisplayRotation()
-        val (dx, dy) = getDisplayScalingFactors(textureSize)
-
-        matrix.postRotate(displayRotation, centerX, centerY)
-        matrix.preScale(dx, dy, centerX, centerY)
-
-        // Correct preview output to account for display rotation and scaling
-        viewFinder.setTransform(matrix)
-    }
-
-    private fun getDisplayRotation(): Float {
-        val rotationDegrees = when (viewFinder.display.rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> throw IllegalStateException("Unknown display rotation ${viewFinder.display.rotation}")
-        }
-        return -rotationDegrees.toFloat()
-    }
-
-    private fun getDisplayScalingFactors(textureSize: Size): Pair<Float, Float> {
-        val cameraPreviewRation = textureSize.height / textureSize.width.toFloat()
-        val scaledWidth: Int
-        val scaledHeight: Int
-        if (viewFinder.width > viewFinder.height) {
-            scaledHeight = viewFinder.width
-            scaledWidth = (viewFinder.width * cameraPreviewRation).toInt()
-        } else {
-            scaledHeight = viewFinder.height
-            scaledWidth = (viewFinder.height * cameraPreviewRation).toInt()
-        }
-        val dx = scaledWidth / viewFinder.width.toFloat()
-        val dy = scaledHeight / viewFinder.height.toFloat()
-        return Pair(dx, dy)
-    }
-
     private fun buildImageCaptureUseCase(): ImageCapture {
-        val capture = ImageCapture(
-            UsecaseConfigBuilder.buildImageCaptureConfig(
-                viewFinder.display
-            )
-        )
+        val display = viewFinder.display
+        val metrics = DisplayMetrics().also { display.getMetrics(it) }
+        val capture = ImageCapture.Builder()
+                .setTargetRotation(display.rotation)
+                .setTargetResolution(Size(metrics.widthPixels, metrics.heightPixels))
+                .setFlashMode(ImageCapture.FLASH_MODE_AUTO)
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                .build()
+
+        val executor = Executors.newSingleThreadExecutor()
         cameraCaptureImageButton.setOnClickListener {
             capture.takePicture(
-                FileCreator.createTempFile(JPEG_FORMAT),
-                Executors.newSingleThreadExecutor(),
-                object : OnImageSavedListener {
-                    override fun onImageSaved(file: File) {
-                        val arguments =
-                            GalleryFragment.arguments(
-                                file.absolutePath
-                            )
-                        Navigation.findNavController(requireActivity(), R.id.mainContent)
-                            .navigate(R.id.imagePreviewFragment, arguments)
-                    }
+                    FileCreator.createTempFile(JPEG_FORMAT),
+                    executor,
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onImageSaved(file: File) {
+                            val arguments = GalleryFragment.arguments(file.absolutePath)
+                            Navigation.findNavController(requireActivity(), R.id.mainContent)
+                                    .navigate(R.id.imagePreviewFragment, arguments)
+                        }
 
-                    override fun onError(
-                        imageCaptureError: ImageCapture.ImageCaptureError,
-                        message: String,
-                        cause: Throwable?
-                    ) {
-                        Toast.makeText(requireContext(), "Error: $message", Toast.LENGTH_LONG)
-                            .show()
-                        Log.e("CameraFragment", "Capture error $imageCaptureError: $message", cause)
-                    }
-                })
+                        override fun onError(imageCaptureError: Int, message: String, cause: Throwable?) {
+                            Toast.makeText(requireContext(), "Error: $message", Toast.LENGTH_LONG).show()
+                            Log.e("CameraFragment", "Capture error $imageCaptureError: $message", cause)
+                        }
+                    })
         }
         return capture
     }
 
     private fun buildImageAnalysisUseCase(): ImageAnalysis {
-        val analysis = ImageAnalysis(
-            UsecaseConfigBuilder.buildImageAnalysisConfig(
-                viewFinder.display
-            )
-        )
+        val display = viewFinder.display
+        val metrics = DisplayMetrics().also { display.getMetrics(it) }
+        val analysis = ImageAnalysis.Builder()
+                .setTargetRotation(display.rotation)
+                .setTargetResolution(Size(metrics.widthPixels, metrics.heightPixels))
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_BLOCK_PRODUCER)
+                .setImageQueueDepth(10)
+                .build()
         analysis.setAnalyzer(
-            Executors.newSingleThreadExecutor(),
-            ImageAnalysis.Analyzer { image, rotationDegrees ->
-                Log.d(
-                    "CameraFragment",
-                    "Image analysis: $image - Rotation degrees: $rotationDegrees"
-                )
-            })
+                Executors.newSingleThreadExecutor(),
+                ImageAnalysis.Analyzer { imageProxy ->
+                    Log.d("CameraFragment", "Image analysis result $imageProxy")
+                    imageProxy.close()
+                })
         return analysis
+    }
+
+    private fun setupTapForFocus(cameraControl: CameraControl) {
+        viewFinder.setOnTouchListener { _, event ->
+            if (event.action != MotionEvent.ACTION_UP) {
+                return@setOnTouchListener true
+            }
+
+            val textureView = viewFinder.getChildAt(0) as? TextureView
+                    ?: return@setOnTouchListener true
+            val factory = TextureViewMeteringPointFactory(textureView)
+
+            val point = factory.createPoint(event.x, event.y)
+            val action = FocusMeteringAction.Builder.from(point).build()
+            cameraControl.startFocusAndMetering(action)
+            return@setOnTouchListener true
+        }
     }
 }
